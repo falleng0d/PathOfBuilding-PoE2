@@ -3702,7 +3702,7 @@ function ItemsTabClass:FormatItemSource(text)
 			   :gsub("prophecy{([^}]+)}",colorCodes.PROPHECY.."%1"..colorCodes.SOURCE)
 end
 
-function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode, maxWidth, forceSlotOnlyTooltips, compareSlotName)
+function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode, maxWidth, forceSlotOnlyTooltips, compareSlotName, suppressStatDifferences)
 	local slotOnlyTooltips = forceSlotOnlyTooltips ~= nil and forceSlotOnlyTooltips or main.slotOnlyTooltips
 	local fontSizeSmall = main.showFlavourText and 16 or 14
 	local fontSizeBig = main.showFlavourText and 18 or 16
@@ -4190,6 +4190,9 @@ function ItemsTabClass:AddItemTooltip(tooltip, item, slot, dbMode, maxWidth, for
 		end
 	end
 	-- Stat differences
+	if suppressStatDifferences then
+		return
+	end
 	local itemTabHint = self.build.viewMode == "ITEMS" and "" or " in the Items tab"
 	if not self.showStatDifferences then
 		tooltip:AddSeparator(14)

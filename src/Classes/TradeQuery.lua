@@ -883,6 +883,17 @@ function TradeQueryClass:GetResultScorePercent(evaluation)
 	return totalWeight > 0 and scorePercent / totalWeight or nil
 end
 
+function TradeQueryClass:GetMegalomaniacAddedNodes(result)
+	local addedNodes = {}
+	for nodeName in ((result and result.item_string or "").."\r\n"):gmatch("Allocates (.-)\r?\n") do
+		local node = self.itemsTab.build.spec.tree.notableMap[nodeName:lower()]
+		if node and node.recipes ~= nil then
+			addedNodes[node] = true
+		end
+	end
+	return addedNodes
+end
+
 -- Method to evaluate a result by getting it's output and weight
 function TradeQueryClass:GetResultEvaluation(row_idx, result_index, calcFunc, baseOutput)
 	local result = self.resultTbl[row_idx][result_index]
@@ -906,21 +917,13 @@ function TradeQueryClass:GetResultEvaluation(row_idx, result_index, calcFunc, ba
 	local slotTbl = self.slotTables[row_idx]
 	local jewelNodeId = slotTbl.nodeId or slotTbl.selectedJewelNodeId
 	if slotTbl.slotName == "Megalomaniac" then
-		local addedNodes = {}
-		for nodeName in (result.item_string.."\r\n"):gmatch("Allocates (.-)\r?\n") do
-			local node = self.itemsTab.build.spec.tree.notableMap[nodeName:lower()]
-			if node and node.recipes ~= nil then
-				addedNodes[node] = true
-			end
-		end
-
-		local fullNewOutput = calcFunc({ addNodes = addedNodes })
+		local fullNewOutput = calcFunc({ addNodes = self:GetMegalomaniacAddedNodes(result) })
 		local output = self:ReduceOutput(fullNewOutput)
 		local weight = self.tradeQueryGenerator.WeightedRatioOutputs(baseOutput, output, self.statSortSelectionList)
 		local statDetails = self:ComputeStatDetails(baseOutput, fullNewOutput)
 		result.evaluation = {{ output = output, weight = weight, statDetails = statDetails }}
 	else
-		local slotName = jewelNodeId and "Jewel " .. tostring(jewelNodeId) or slotTbl.slotName
+		local slotName = jewelNodeId and "Jewel " .. tostring(jewelNodeId) or slotTbl.fullName or slotTbl.slotName
 		local item = new("Item"):Item(result.item_string)
 
 		local fullNewOutput = calcFunc({ repSlotName = slotName, repItem = item })
@@ -1301,13 +1304,14 @@ you can add them, copy the link here, and press "Price Item" to evaluate the ite
 		end
 		local item = new("Item"):Item(result.item_string)
 		local tooltipSlot = slotTbl.selectedJewelNodeId and self.itemsTab.sockets[slotTbl.selectedJewelNodeId] or activeSlot
-		self.itemsTab:AddItemTooltip(tooltip, item, tooltipSlot, dbMode, nil, true, tooltipSlot and tooltipSlot.slotName or nil)
-		if main.slotOnlyTooltips and slotTbl.slotName == "Megalomaniac" then
-			local evaluation = self:GetResultEvaluation(row_idx, result_index)
-			if evaluation and evaluation[1] then
-				self.itemsTab.build:AddStatComparesToTooltip(tooltip, self.onlyWeightedBaseOutput[row_idx][result_index], evaluation[1].output, "^7Equipping this item will give you:")
-			end
+		if slotTbl.slotName == "Megalomaniac" then
+			local calcFunc, baseOutput = self.itemsTab.build.calcsTab:GetMiscCalculator()
+			local output = calcFunc({ addNodes = self:GetMegalomaniacAddedNodes(result) })
+			self.itemsTab:AddItemTooltip(tooltip, item, nil, dbMode, nil, nil, nil, true)
+			self.itemsTab.build:AddStatComparesToTooltip(tooltip, baseOutput, output, "^7Equipping this item will give you:")
+			return
 		end
+		self.itemsTab:AddItemTooltip(tooltip, item, tooltipSlot, dbMode, nil, true, tooltipSlot and tooltipSlot.slotName or nil)
 	end
 	self:UpdateDropdownList(row_idx)
 	controls["resultDropdown"..row_idx].tooltipFunc = function(tooltip, dropdown_mode, dropdown_index, dropdown_display_string)
