@@ -1294,21 +1294,34 @@ you can add them, copy the link here, and press "Price Item" to evaluate the ite
 	end)
 	controls["resultDropdown"..row_idx].enableDroppedWidth = true
 	controls["resultDropdown"..row_idx].maxDroppedWidth = 600
+	local function addCompareTooltip(tooltip, result_index, dbMode)
+		local result = self.resultTbl[row_idx] and self.resultTbl[row_idx][result_index]
+		if not result or not result.item_string then
+			return
+		end
+		local item = new("Item"):Item(result.item_string)
+		local tooltipSlot = slotTbl.selectedJewelNodeId and self.itemsTab.sockets[slotTbl.selectedJewelNodeId] or activeSlot
+		self.itemsTab:AddItemTooltip(tooltip, item, tooltipSlot, dbMode, nil, true, tooltipSlot and tooltipSlot.slotName or nil)
+		if main.slotOnlyTooltips and slotTbl.slotName == "Megalomaniac" then
+			local evaluation = self:GetResultEvaluation(row_idx, result_index)
+			if evaluation and evaluation[1] then
+				self.itemsTab.build:AddStatComparesToTooltip(tooltip, self.onlyWeightedBaseOutput[row_idx][result_index], evaluation[1].output, "^7Equipping this item will give you:")
+			end
+		end
+	end
 	self:UpdateDropdownList(row_idx)
 	controls["resultDropdown"..row_idx].tooltipFunc = function(tooltip, dropdown_mode, dropdown_index, dropdown_display_string)
 		local sortedRow = self.sortedResultTbl[row_idx]
 		if not sortedRow or not sortedRow[dropdown_index] then
 			return
 		end
-		local pb_index = sortedRow[dropdown_index].index
-		local result = self.resultTbl[row_idx] and self.resultTbl[row_idx][pb_index]
+		tooltip:Clear()
+		local result_index = sortedRow[dropdown_index].index
+		local result = self.resultTbl[row_idx] and self.resultTbl[row_idx][result_index]
 		if not result then
 			return
 		end
-		local item = new("Item"):Item(result.item_string)
-		tooltip:Clear()
-		local tooltipSlot = slotTbl.selectedJewelNodeId and self.itemsTab.sockets[slotTbl.selectedJewelNodeId] or activeSlot
-		self.itemsTab:AddItemTooltip(tooltip, item, tooltipSlot)
+		addCompareTooltip(tooltip, result_index)
 		tooltip:AddSeparator(10)
 		local eval = result.evaluation
 		if eval and eval[1] and eval[1].statDetails then
@@ -1344,14 +1357,9 @@ you can add them, copy the link here, and press "Price Item" to evaluate the ite
 	controls["importButton"..row_idx].tooltipFunc = function(tooltip)
 		tooltip:Clear()
 		local selected_result_index = self.itemIndexTbl[row_idx]
-		local item_string = self.resultTbl[row_idx][selected_result_index].item_string
-		if selected_result_index and item_string then
-			-- TODO: item parsing bug caught here.
-			-- item.baseName is nil and throws error in the following AddItemTooltip func
-			-- if the item is unidentified
-			local item = new("Item"):Item(item_string)
-			local tooltipSlot = slotTbl.selectedJewelNodeId and self.itemsTab.sockets[slotTbl.selectedJewelNodeId] or activeSlot
-			self.itemsTab:AddItemTooltip(tooltip, item, tooltipSlot, true)
+		local itemResult = selected_result_index and self.resultTbl[row_idx] and self.resultTbl[row_idx][selected_result_index]
+		if itemResult and itemResult.item_string then
+			addCompareTooltip(tooltip, selected_result_index, true)
 		end
 	end
 	controls["importButton"..row_idx].enabled = function()
